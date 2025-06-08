@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Server Manager</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>MCP Server Manager</h1>
+        
+        <!-- Messages -->
+        <div id="errorMessage" class="message error" style="display: none;"></div>
+        <div id="successMessage" class="message success" style="display: none;"></div>
+        
+        <!-- Navigation -->
+        <div class="tabs">
+            <button class="tab active" onclick="showView('servers', this)">Servers Library</button>
+            <button class="tab" onclick="showView('claude', this)">Claude</button>
+            <button class="tab" onclick="showView('cursor', this)">Cursor</button>
+            <button class="tab" onclick="showView('backups', this)">Backups</button>
+        </div>
+
+        <!-- Servers View -->
+        <div id="serversView" class="grid"></div>
+
+        <!-- Claude View -->
+        <div id="claudeView" style="display: none;"></div>
+
+        <!-- Cursor View -->
+        <div id="cursorView" style="display: none;"></div>
+
+        <!-- Backups View -->
+        <div id="backupsView" style="display: none;"></div>
+
+        <!-- Save Button -->
+        <button class="save-button" onclick="saveChanges()">Save Changes</button>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
