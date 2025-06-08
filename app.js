@@ -2,6 +2,30 @@ let mcpServers = {};
 let originalConfig = {};
 let toolsList = [];
 
+// Dark mode functionality
+function initializeDarkMode() {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+    
+    setTheme(theme);
+}
+
+function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    const icon = document.getElementById('dark-mode-icon');
+    if (icon) {
+        icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+    localStorage.setItem('theme', theme);
+}
+
+function toggleDarkMode() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+}
+
 // API endpoints
 const API = {
     MERGED_CONFIG: '/api/merged-config',
@@ -1325,7 +1349,10 @@ async function saveChanges() {
 
 // Initialize the app
 console.log('Initializing MCP Manager...');
-window.onload = loadConfigs;
+window.onload = function() {
+    initializeDarkMode();
+    loadConfigs();
+};
 
 // Export functions for global access
 window.showView = showView;
@@ -1352,3 +1379,4 @@ window.syncFormToJson = syncFormToJson;
 window.syncJsonToForm = syncJsonToForm;
 window.renderBackupsView = renderBackupsView;
 window.restoreSpecificBackup = restoreSpecificBackup;
+window.toggleDarkMode = toggleDarkMode;

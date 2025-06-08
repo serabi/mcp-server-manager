@@ -7,6 +7,85 @@ import os from 'os';
 const router = express.Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Enhanced validation functions for security
+function isValidArgument(arg) {
+    // Allow flags that start with - or --
+    if (arg.startsWith('-')) {
+        // Only allow alphanumeric, hyphens, underscores, equals, and dots in flags
+        return /^-{1,2}[\w.-]+(=[\w.-]+)?$/.test(arg);
+    }
+    
+    // For non-flag arguments (file paths, values, etc.)
+    try {
+        // First decode any URL encoding to catch encoded traversal attempts
+        let decodedArg = arg;
+        try {
+            decodedArg = decodeURIComponent(arg);
+        } catch (e) {
+            // If decoding fails, use original arg
+        }
+        
+        // Check for traversal patterns in both original and decoded versions
+        const traversalPatterns = ['../', '..\\', '../', '~/', '~/'];
+        for (const pattern of traversalPatterns) {
+            if (arg.includes(pattern) || decodedArg.includes(pattern)) {
+                return false;
+            }
+        }
+        
+        const resolved = path.resolve(decodedArg);
+        
+        // Check for path traversal in resolved path
+        if (resolved.includes('/../') || resolved.endsWith('/..')) {
+            return false;
+        }
+        
+        // Allow absolute paths within reasonable system directories
+        const allowedPrefixes = [
+            '/usr/', '/opt/', '/Applications/', '/System/', 
+            os.homedir(), '/private/var/folders/', '/tmp/',
+            process.cwd(), // Current working directory
+            '/path/' // Common placeholder path used in examples
+        ];
+        
+        // Allow relative paths that don't traverse up
+        if (!path.isAbsolute(decodedArg)) {
+            // Check that relative path doesn't contain traversal
+            const normalized = path.normalize(decodedArg);
+            return !normalized.startsWith('../') && !normalized.includes('/../');
+        }
+        
+        // For absolute paths, check they start with allowed prefixes
+        return allowedPrefixes.some(prefix => resolved.startsWith(prefix));
+        
+    } catch (error) {
+        // If path resolution fails, reject the argument
+        return false;
+    }
+}
+
+function isValidScriptPath(scriptPath) {
+    // Use the same validation as general arguments
+    if (!isValidArgument(scriptPath)) {
+        return false;
+    }
+    
+    // Additional checks for script files
+    const allowedExtensions = ['.js', '.mjs', '.py', '.ts', '.mts'];
+    const ext = path.extname(scriptPath).toLowerCase();
+    
+    // If it has an extension, it must be allowed
+    if (ext && !allowedExtensions.includes(ext)) {
+        return false;
+    }
+    
+    // Don't allow scripts in sensitive system directories
+    const sensitiveDirectories = ['/etc/', '/bin/', '/sbin/', '/usr/bin/', '/usr/sbin/'];
+    const resolved = path.resolve(scriptPath);
+    
+    return !sensitiveDirectories.some(dir => resolved.startsWith(dir));
+}
+
 // Validate server command and arguments for security
 function validateServerCommand(command, args) {
     // Only allow specific safe commands for MCP servers
@@ -38,9 +117,9 @@ function validateServerCommand(command, args) {
                 throw new Error('All arguments must be strings');
             }
             
-            // Check for suspicious patterns in arguments
-            if (arg.includes('..') || arg.includes('~')) {
-                throw new Error(`Suspicious path pattern in argument: ${arg}`);
+            // Enhanced validation to prevent path traversal and injection
+            if (!isValidArgument(arg)) {
+                throw new Error(`Invalid argument format: ${arg}`);
             }
             
             // Allow common safe flags for MCP servers
@@ -75,9 +154,9 @@ function validateServerCommand(command, args) {
                     throw new Error(`Script extension not allowed: ${ext}. Allowed: ${allowedExtensions.join(', ')}`);
                 }
                 
-                // Validate script path doesn't contain suspicious patterns
-                if (scriptPath.includes('..') || scriptPath.includes('~')) {
-                    throw new Error(`Suspicious script path: ${scriptPath}`);
+                // Validate script path using enhanced validation
+                if (!isValidScriptPath(scriptPath)) {
+                    throw new Error(`Invalid script path: ${scriptPath}`);
                 }
             }
         }
